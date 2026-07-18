@@ -12,6 +12,8 @@ from app.models.document_chunk import DocumentChunk
 from app.parsers.pdf_parser import PDFParser
 from app.parsers.txt_parser import TXTParser
 from app.processing.chunker import TextChunker
+from app.core.config import get_settings
+from app.services.embedding_service import EmbeddingService
 
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt"}
@@ -83,6 +85,11 @@ class DocumentService:
             )
             created_document = await self.repository.create(document)
 
+            created_document = await self.repository.update_status(
+                 created_document,
+                "processed",
+            )
+
             if extension == ".pdf":
                 extracted_text = PDFParser().extract_text(str(stored_path))
             else:
@@ -110,13 +117,47 @@ class DocumentService:
 
             await self.repository.create_chunks(document_chunks)
 
-            created_document = await self.repository.update_status(
-                 created_document,
-                "processed",
+            settings = get_settings()
+
+            embedding_service = EmbeddingService(
+                api_key=settings.openai_api_key,
+                model=settings.openai_embedding_model,
             )
 
+            embedding_json_values = await embedding_service.generate_embeddings(
+                 [chunk.content for chunk in document_chunks]
+            )
+
+           
+
+            await self.repository.create_chunks(document_chunks)
+
+            # embedding_service = EmbeddingService(
+            #     api_key=settings.openai_api_key,
+            #     model=settings.openai_embedding_model,
+            # )
+
+            await self.repository.update_chunk_embeddings(
+                document_chunks,
+                embedding_json_values,
+            )
+            created_document = await self.repository.update_status(
+                created_document,
+                "processed",
+            )         
+            
+
         except Exception:
-            stored_path.unlink(missing_ok=True)
+            if "created_document" is not None():
+                try:
+                    created_document = await self.repository.update_status(
+                    created_document,
+                    "failed",
+                    )
+                except Exception:
+                    await self.repository.sesson.rollback()
+                
+            
             raise
 
         finally:

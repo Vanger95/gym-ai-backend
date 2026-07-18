@@ -39,3 +39,20 @@ class DocumentRepository:
         await self.session.refresh(document)
         return document
     
+    async def update_chunk_embeddings(self, chunks: list[DocumentChunk], embeddings: list[str]) -> list[DocumentChunk]:
+
+        if len(chunks) != len(embeddings):
+            raise ValueError("The length of chunks and embeddings must be the same.")
+        
+        for chunk, embedding_json in zip(chunks, embeddings, strict=True,):
+
+            chunk.embedding_json = embedding_json
+
+        await self.session.commit()
+
+        for chunk in chunks:
+            await self.session.refresh(chunk)
+
+        # await self.session.commit()
+        # await self.session.refresh(chunk)
+        return chunks
