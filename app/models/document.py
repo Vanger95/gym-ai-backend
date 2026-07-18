@@ -26,6 +26,7 @@ class Document(Base):
     )
 
     filename: Mapped[str] = mapped_column(String)
+    storage_path: Mapped[str] = mapped_column(String)
     content_type: Mapped[str] = mapped_column(String)
     category: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, default="processing")
