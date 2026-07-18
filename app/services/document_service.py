@@ -8,6 +8,11 @@ from app.models.document import Document
 from app.repositories.document_repository import DocumentRepository
 from app.schemas.document import DocumentResponse
 
+from app.models.document_chunk import DocumentChunk
+from app.parsers.pdf_parser import PDFParser
+from app.parsers.txt_parser import TXTParser
+from app.processing.chunker import TextChunker
+
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt"}
 ALLOWED_CONTENT_TYPES = {
@@ -66,6 +71,7 @@ class DocumentService:
 
         try:
             stored_path.write_bytes(file_contents)
+            # created_document = await self.repository.create(document)
 
             document = Document(
                  trainer_id=trainer_id,
@@ -75,8 +81,39 @@ class DocumentService:
                  category=category,
                  status="uploaded",
             )
-
             created_document = await self.repository.create(document)
+
+            if extension == ".pdf":
+                extracted_text = PDFParser().extract_text(str(stored_path))
+            else:
+                extracted_text = TXTParser().extract_text(str(stored_path)) 
+
+            chunk_texts = TextChunker(
+                chunk_size=1000,
+                chunk_overlap=150,
+            ).split(extracted_text)
+
+            if not chunk_texts:
+                raise InvalidDocumentError(
+                    "No readable text could be extracted from the document."
+                )
+            document_chunks = [
+            DocumentChunk(
+                document_id=created_document.id,
+                chunk_index=index,
+                content=chunk_text,
+                page_number=None,
+                embedding_json=None,
+                )
+                for index, chunk_text in enumerate(chunk_texts)
+            ]   
+
+            await self.repository.create_chunks(document_chunks)
+
+            created_document = await self.repository.update_status(
+                 created_document,
+                "processed",
+            )
 
         except Exception:
             stored_path.unlink(missing_ok=True)
@@ -85,4 +122,4 @@ class DocumentService:
         finally:
             await file.close()
 
-        return DocumentResponse.model_validate(created_document)
+        return DocumentResponse.model_validate(created_document)    

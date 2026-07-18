@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
+from app.models.document_chunk import DocumentChunk
 
 
 class DocumentRepository:
@@ -23,3 +24,18 @@ class DocumentRepository:
     async def delete(self, document: Document) -> None:
         await self.session.delete(document)
         await self.session.commit()
+
+    async def create_chunks(self, chunks: list[DocumentChunk]) -> list[DocumentChunk]:
+        self.session.add_all(chunks)
+        await self.session.commit()
+        for chunk in chunks:
+            await self.session.refresh(chunk)
+        return chunks
+    
+    async def update_status(self, document: Document, status: str) -> Document:
+        document.status = status
+        # self.session.add(document)
+        await self.session.commit()
+        await self.session.refresh(document)
+        return document
+    

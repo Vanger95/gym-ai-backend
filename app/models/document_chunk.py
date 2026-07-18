@@ -26,7 +26,7 @@ class DocumentChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    embedding_json: Mapped[str] = mapped_column(Text)
+    embedding_json: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
