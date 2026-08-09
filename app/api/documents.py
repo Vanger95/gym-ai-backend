@@ -15,6 +15,8 @@ from app.services.document_service import (
     DocumentService,
     InvalidDocumentError,
 )
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 router = APIRouter(
     prefix="/documents",
@@ -31,6 +33,7 @@ async def upload_document(
     file: UploadFile = File(...),
     category: str = Form(...),
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> DocumentResponse:
     service = DocumentService(session)
 
@@ -38,6 +41,7 @@ async def upload_document(
         return await service.upload_document(
             file=file,
             category=category,
+            trainer_id=trainer.id,
         )
     except InvalidDocumentError as error:
         raise HTTPException(

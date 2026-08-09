@@ -22,7 +22,7 @@ class Document(Base):
     trainer_id: Mapped[str] = mapped_column(
         String,
         index=True,
-        default="demo-trainer",
+        nullable=False,
     )
 
     filename: Mapped[str] = mapped_column(String)

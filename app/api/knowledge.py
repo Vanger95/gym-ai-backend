@@ -10,6 +10,8 @@ from app.schemas.knowledge import (
 )
 from app.services.embedding_service import EmbeddingService
 from app.services.knowledge_service import KnowledgeService
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 
 router = APIRouter(
@@ -25,6 +27,7 @@ router = APIRouter(
 async def search_knowledge(
     request: KnowledgeSearchRequest,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> KnowledgeSearchResponse:
     settings = get_settings()
 
@@ -43,7 +46,7 @@ async def search_knowledge(
     try:
         results = await service.search(
             query=request.query,
-            trainer_id="demo-trainer",
+            trainer_id=trainer.id,
             top_k=request.top_k,
             category=request.category,
         )

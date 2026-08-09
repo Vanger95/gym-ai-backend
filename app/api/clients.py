@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db_session
 from app.schemas.client import ClientCreate, ClientResponse
 from app.services.client_service import ClientService
+
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 router = APIRouter(
     prefix="/clients",
@@ -19,6 +22,57 @@ router = APIRouter(
 async def create_client(
     payload: ClientCreate,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> ClientResponse:
     service = ClientService(session)
-    return await service.create_client(payload)
+
+    return await service.create_client(
+        payload,
+        trainer_id=trainer.id,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[ClientResponse],
+)
+
+async def list_clients(
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
+) -> list[ClientResponse]:
+    service = ClientService(session)
+
+    return await service.list_clients(
+        trainer_id=trainer.id,
+    )
+
+
+
+
+@router.get(
+    "/{client_id}",
+    response_model=ClientResponse,
+)
+
+async def get_client(
+    client_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
+) -> ClientResponse:
+    service = ClientService(session)
+
+    client = await service.get_client(
+        client_id=client_id,
+        trainer_id=trainer.id,
+    )
+
+    if client is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client not found.",
+        )
+
+    return client
+
+

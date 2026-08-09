@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 5
     max_upload_size_mb: int = 10
 
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

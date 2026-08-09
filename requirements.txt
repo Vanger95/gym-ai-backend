@@ -8,3 +8,5 @@ aiosqlite
 alembic
 python-multipart
 pypdf
+pwdlib[argon2]
+PyJWT

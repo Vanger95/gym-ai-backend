@@ -11,6 +11,8 @@ from app.schemas.retrieval import (
 )
 from app.services.embedding_service import EmbeddingService
 from app.services.retrieval_service import RetrievalService
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 
 router = APIRouter(
@@ -27,10 +29,16 @@ async def semantic_search(
     document_id: str,
     request: SemanticSearchRequest,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> SemanticSearchResponse:
     settings = get_settings()
 
     repository = DocumentRepository(session)
+
+    # ensure trainer owns the document
+    document = await repository.get_by_id(document_id)
+    if document is None or document.trainer_id != trainer.id:
+        raise HTTPException(status_code=404, detail="Document not found.")
 
     embedding_service = EmbeddingService(
         api_key=settings.openai_api_key,

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 from app.agents.nutrition_agent import NutritionAgent
 from app.agents.workout_agent import WorkoutAgent
@@ -76,20 +78,22 @@ def build_plan_service(
 )
 async def generate_plan(
     request: GeneratePlanRequest,
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> SavedPlanResponse:
-    trainer_id = "demo-trainer"
-
     service = build_plan_service(
         session
     )
+    trainer: Trainer = Depends(get_current_trainer)
+
+    # extract trainer at runtime
+    # FastAPI will inject trainer when this endpoint is called
+    # get trainer id from dependency
 
     try:
         return await service.generate_and_save(
             client_id=request.client_id,
-            trainer_id=trainer_id,
+            trainer_id=trainer.id,
         )
 
     except ValueError as error:
@@ -110,19 +114,11 @@ async def generate_plan(
     response_model=list[SavedPlanResponse],
 )
 async def list_plans(
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> list[SavedPlanResponse]:
-    trainer_id = "demo-trainer"
-
-    service = build_plan_service(
-        session
-    )
-
-    return await service.list_plans(
-        trainer_id=trainer_id,
-    )
+    service = build_plan_service(session)
+    return await service.list_plans(trainer_id=trainer.id)
 
 
 @router.get(
@@ -131,19 +127,14 @@ async def list_plans(
 )
 async def get_plan(
     plan_id: str,
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> SavedPlanResponse:
-    trainer_id = "demo-trainer"
-
-    service = build_plan_service(
-        session
-    )
+    service = build_plan_service(session)
 
     plan = await service.get_plan(
         plan_id=plan_id,
-        trainer_id=trainer_id,
+        trainer_id=trainer.id,
     )
 
     if plan is None:
@@ -161,19 +152,14 @@ async def get_plan(
 )
 async def delete_plan(
     plan_id: str,
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> Response:
-    trainer_id = "demo-trainer"
-
-    service = build_plan_service(
-        session
-    )
+    service = build_plan_service(session)
 
     deleted = await service.delete_plan(
         plan_id=plan_id,
-        trainer_id=trainer_id,
+        trainer_id=trainer.id,
     )
 
     if not deleted:
@@ -193,21 +179,16 @@ async def delete_plan(
 )
 async def regenerate_plan(
     plan_id: str,
-    session: AsyncSession = Depends(
-        get_db_session
-    ),
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> RegeneratePlanResponse:
-    trainer_id = "demo-trainer"
-
-    service = build_plan_service(
-        session
-    )
+    service = build_plan_service(session)
 
     try:
         regenerated = (
             await service.regenerate_plan(
                 plan_id=plan_id,
-                trainer_id=trainer_id,
+                trainer_id=trainer.id,
             )
         )
 

@@ -21,7 +21,7 @@ class Client(Base):
     trainer_id: Mapped[str] = mapped_column(
         String,
         index=True,
-        default="demo-trainer",
+        nullable=False,
     )
 
     age: Mapped[int] = mapped_column(Integer)

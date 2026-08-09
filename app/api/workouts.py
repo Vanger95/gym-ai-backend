@@ -9,6 +9,8 @@ from app.repositories.document_repository import DocumentRepository
 from app.schemas.workout import WorkoutGenerateRequest, WorkoutPlan
 from app.services.embedding_service import EmbeddingService
 from app.services.knowledge_service import KnowledgeService
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 
 router = APIRouter(
@@ -24,11 +26,11 @@ router = APIRouter(
 async def generate_workout(
     request: WorkoutGenerateRequest,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> WorkoutPlan:
     settings = get_settings()
 
-    # Temporary until trainer authentication is added.
-    trainer_id = "demo-trainer"
+    trainer_id = trainer.id
 
     client_repository = ClientRepository(session)
 

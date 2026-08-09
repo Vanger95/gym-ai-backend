@@ -19,3 +19,27 @@ class ClientRepository:
             select(Client).where(Client.id == client_id)
         )
         return result.scalar_one_or_none()
+
+    async def list_by_trainer(
+        self,
+        trainer_id: str,
+    ) -> list[Client]:
+        result = await self.session.execute(
+            select(Client)
+            .where(Client.trainer_id == trainer_id)
+            .order_by(Client.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_by_id_and_trainer(
+        self,
+        client_id: str,
+        trainer_id: str,
+    ) -> Client | None:
+        result = await self.session.execute(
+            select(Client).where(
+                Client.id == client_id,
+                Client.trainer_id == trainer_id,
+            )
+        )
+        return result.scalar_one_or_none()

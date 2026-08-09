@@ -21,7 +21,7 @@ class Plan(Base):
     trainer_id: Mapped[str] = mapped_column(
         String,
         index=True,
-        default="demo-trainer",
+        nullable=False,
     )
 
     client_id: Mapped[str] = mapped_column(

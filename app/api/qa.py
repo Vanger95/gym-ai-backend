@@ -12,6 +12,8 @@ from app.services.chat_service import ChatService
 from app.services.embedding_service import EmbeddingService
 from app.services.rag_service import RAGService
 from app.services.retrieval_service import RetrievalService
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 
 router = APIRouter(
@@ -28,6 +30,7 @@ async def ask_document(
     document_id: str,
     request: AskDocumentRequest,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> AskDocumentResponse:
     settings = get_settings()
 
@@ -52,6 +55,11 @@ async def ask_document(
         retrieval_service=retrieval_service,
         chat_service=chat_service,
     )
+
+    # ensure trainer owns the document
+    document = await repository.get_by_id(document_id)
+    if document is None or document.trainer_id != trainer.id:
+        raise HTTPException(status_code=404, detail="Document not found.")
 
     try:
         result = await rag_service.ask(

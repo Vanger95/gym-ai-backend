@@ -38,7 +38,7 @@ class DocumentService:
         self,
         file: UploadFile,
         category: str,
-        trainer_id: str = "demo-trainer",
+        trainer_id: str,
     ) -> DocumentResponse:
         if not file.filename:
             raise InvalidDocumentError("The uploaded file must have a filename.")

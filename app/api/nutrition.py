@@ -9,6 +9,8 @@ from app.repositories.document_repository import DocumentRepository
 from app.schemas.nutrition import NutritionGenerateRequest, NutritionPlan
 from app.services.embedding_service import EmbeddingService
 from app.services.knowledge_service import KnowledgeService
+from app.core.auth import get_current_trainer
+from app.models.trainer import Trainer
 
 
 router = APIRouter(
@@ -24,12 +26,12 @@ router = APIRouter(
 async def generate_nutrition_plan(
     request: NutritionGenerateRequest,
     session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
 ) -> NutritionPlan:
 
     settings = get_settings()
 
-    # Temporary until authentication is implemented.
-    trainer_id = "demo-trainer"
+    trainer_id = trainer.id
 
     # 1. Find client
     client_repository = ClientRepository(session)
