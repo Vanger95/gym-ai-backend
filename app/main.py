@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.database.session import get_db_session
 from app.api.documents import router as documents_router
 from app.api.retrieval import router as retrieval_router
+from app.api.qa import router as qa_router
 
 
 settings = get_settings()
@@ -21,6 +22,7 @@ app = FastAPI(
 app.include_router(clients_router)
 app.include_router(documents_router)
 app.include_router(retrieval_router)
+app.include_router(qa_router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:
