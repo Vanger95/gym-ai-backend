@@ -108,3 +108,56 @@ class ClientService:
             ),
             created_at=client.created_at,
         )
+
+    async def update_client(
+        self,
+        client_id: str,
+        trainer_id: str,
+        payload: ClientCreate,
+    ) -> ClientResponse | None:
+        client = await self.repository.get_by_id_and_trainer(
+            client_id=client_id,
+            trainer_id=trainer_id,
+        )
+
+        if client is None:
+            return None
+
+        client.age = payload.age
+        client.height_cm = payload.height_cm
+        client.weight_kg = payload.weight_kg
+        client.goal = payload.goal
+        client.experience_level = payload.experience_level
+        client.training_days_per_week = payload.training_days_per_week
+        client.session_duration_minutes = payload.session_duration_minutes
+        client.available_equipment_json = json.dumps(
+            payload.available_equipment
+        )
+        client.injuries_or_limitations_json = json.dumps(
+            payload.injuries_or_limitations
+        )
+        client.dietary_preferences_json = json.dumps(
+            payload.dietary_preferences
+        )
+        client.allergies_json = json.dumps(payload.allergies)
+
+        updated = await self.repository.update(client)
+
+        return self._to_response(updated)
+
+    async def delete_client(
+        self,
+        client_id: str,
+        trainer_id: str,
+    ) -> bool:
+        client = await self.repository.get_by_id_and_trainer(
+            client_id=client_id,
+            trainer_id=trainer_id,
+        )
+
+        if client is None:
+            return False
+
+        await self.repository.delete(client)
+
+        return True

@@ -76,3 +76,50 @@ async def get_client(
     return client
 
 
+
+@router.patch(
+    "/{client_id}",
+    response_model=ClientResponse,
+)
+async def update_client(
+    client_id: str,
+    payload: ClientCreate,
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
+) -> ClientResponse:
+    service = ClientService(session)
+
+    updated = await service.update_client(
+        client_id=client_id,
+        trainer_id=trainer.id,
+        payload=payload,
+    )
+
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Client not found.")
+
+    return updated
+
+
+@router.delete(
+    "/{client_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_client(
+    client_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    trainer: Trainer = Depends(get_current_trainer),
+) -> None:
+    service = ClientService(session)
+
+    deleted = await service.delete_client(
+        client_id=client_id,
+        trainer_id=trainer.id,
+    )
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Client not found.")
+
+    return None
+
+

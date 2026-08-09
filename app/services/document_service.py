@@ -148,3 +148,46 @@ class DocumentService:
             await file.close()
 
         return DocumentResponse.model_validate(created_document)    
+
+    async def list_documents(self, trainer_id: str) -> list[DocumentResponse]:
+        documents = await self.repository.list_by_trainer(trainer_id)
+
+        return [
+            DocumentResponse.model_validate(doc)
+            for doc in documents
+        ]
+
+    async def get_document(self, document_id: str, trainer_id: str) -> DocumentResponse | None:
+        document = await self.repository.get_by_id_and_trainer(
+            document_id=document_id,
+            trainer_id=trainer_id,
+        )
+
+        if document is None:
+            return None
+
+        return DocumentResponse.model_validate(document)
+
+    async def delete_document(self, document_id: str, trainer_id: str) -> bool:
+        document = await self.repository.get_by_id_and_trainer(
+            document_id=document_id,
+            trainer_id=trainer_id,
+        )
+
+        if document is None:
+            return False
+
+        # remove stored file if exists
+        try:
+            from pathlib import Path
+
+            stored = Path(document.storage_path)
+            if stored.exists():
+                stored.unlink()
+        except Exception:
+            # ignore file deletion errors; proceed with DB cleanup
+            pass
+
+        await self.repository.delete(document)
+
+        return True

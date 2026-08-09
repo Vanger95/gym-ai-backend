@@ -23,6 +23,29 @@ class DocumentRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_id_and_trainer(
+        self,
+        document_id: str,
+        trainer_id: str,
+    ) -> Document | None:
+        result = await self.session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.trainer_id == trainer_id,
+            )
+        )
+
+        return result.scalar_one_or_none()
+
+    async def list_by_trainer(self, trainer_id: str) -> list[Document]:
+        result = await self.session.execute(
+            select(Document)
+            .where(Document.trainer_id == trainer_id)
+            .order_by(Document.created_at.desc())
+        )
+
+        return list(result.scalars().all())
+
     async def delete(self, document: Document) -> None:
         await self.session.delete(document)
         await self.session.commit()

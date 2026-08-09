@@ -43,3 +43,12 @@ class ClientRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def update(self, client: Client) -> Client:
+        await self.session.commit()
+        await self.session.refresh(client)
+        return client
+
+    async def delete(self, client: Client) -> None:
+        await self.session.delete(client)
+        await self.session.commit()
