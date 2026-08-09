@@ -1,3 +1,5 @@
+from unittest import result
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,3 +58,25 @@ class DocumentRepository:
         # await self.session.commit()
         # await self.session.refresh(chunk)
         return chunks
+    
+
+    async def get_embedded_chunks(self, document_id: int) -> list[DocumentChunk]:
+       statement = (
+            select(DocumentChunk)
+            .where(DocumentChunk.document_id == document_id)
+            .where(DocumentChunk.embedding_json.is_not(None))
+            .order_by(DocumentChunk.chunk_index)
+                    
+        )
+       result = await self.session.execute(statement)
+       
+       return list(result.scalars().all())
+    
+
+    async def get_by_id(self, chunk_id: int) -> DocumentChunk | None:
+        statement = select(DocumentChunk).where(
+            DocumentChunk.id == chunk_id
+        )
+        result = await self.session.execute(statement)
+
+        return result.scalar_one_or_none()
