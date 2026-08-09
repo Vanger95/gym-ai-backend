@@ -80,3 +80,32 @@ class DocumentRepository:
         result = await self.session.execute(statement)
 
         return result.scalar_one_or_none()
+
+
+   
+    async def get_trainer_embedded_chunks(
+        self,
+        trainer_id: str,
+        categories: list[str] | None = None,
+    ) -> list[tuple[DocumentChunk, Document]]:
+        statement = (
+            select(DocumentChunk, Document)
+            .join(
+                Document,
+                Document.id == DocumentChunk.document_id,
+            )
+            .where(
+                Document.trainer_id == trainer_id,
+                Document.status == "processed",
+                DocumentChunk.embedding_json.is_not(None),
+            )
+        )
+
+        if categories:
+            statement = statement.where(
+                Document.category.in_(categories)
+                )
+
+        result = await self.session.execute(statement)
+
+        return list(result.all())

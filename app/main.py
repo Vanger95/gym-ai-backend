@@ -9,6 +9,9 @@ from app.database.session import get_db_session
 from app.api.documents import router as documents_router
 from app.api.retrieval import router as retrieval_router
 from app.api.qa import router as qa_router
+from app.api.knowledge import router as knowledge_router
+from app.api.workouts import router as workouts_router
+
 
 
 settings = get_settings()
@@ -23,6 +26,9 @@ app.include_router(clients_router)
 app.include_router(documents_router)
 app.include_router(retrieval_router)
 app.include_router(qa_router)
+app.include_router(knowledge_router)
+app.include_router(workouts_router)
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
