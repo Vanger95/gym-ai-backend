@@ -1,12 +1,14 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.auth import get_current_trainer
-from app.models.trainer import Trainer
 
 from app.agents.nutrition_agent import NutritionAgent
 from app.agents.workout_agent import WorkoutAgent
+from app.core.auth import get_current_trainer
 from app.core.config import get_settings
 from app.database.session import get_db_session
+from app.models.trainer import Trainer
 from app.repositories.client_repository import ClientRepository
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.plan_repository import PlanRepository
@@ -20,6 +22,9 @@ from app.services.knowledge_service import KnowledgeService
 from app.services.plan_service import PlanService
 
 
+logger = logging.getLogger(__name__)
+
+
 router = APIRouter(
     prefix="/plans",
     tags=["plans"],
@@ -31,17 +36,11 @@ def build_plan_service(
 ) -> PlanService:
     settings = get_settings()
 
-    client_repository = ClientRepository(
-        session
-    )
+    client_repository = ClientRepository(session)
 
-    document_repository = DocumentRepository(
-        session
-    )
+    document_repository = DocumentRepository(session)
 
-    plan_repository = PlanRepository(
-        session
-    )
+    plan_repository = PlanRepository(session)
 
     embedding_service = EmbeddingService(
         api_key=settings.openai_api_key,
@@ -81,14 +80,7 @@ async def generate_plan(
     session: AsyncSession = Depends(get_db_session),
     trainer: Trainer = Depends(get_current_trainer),
 ) -> SavedPlanResponse:
-    service = build_plan_service(
-        session
-    )
-    trainer: Trainer = Depends(get_current_trainer)
-
-    # extract trainer at runtime
-    # FastAPI will inject trainer when this endpoint is called
-    # get trainer id from dependency
+    service = build_plan_service(session)
 
     try:
         return await service.generate_and_save(
@@ -103,6 +95,11 @@ async def generate_plan(
         ) from error
 
     except Exception as error:
+        logger.exception(
+            "Plan generation failed: %s",
+            error,
+        )
+
         raise HTTPException(
             status_code=500,
             detail="Plan generation failed.",
@@ -118,7 +115,10 @@ async def list_plans(
     trainer: Trainer = Depends(get_current_trainer),
 ) -> list[SavedPlanResponse]:
     service = build_plan_service(session)
-    return await service.list_plans(trainer_id=trainer.id)
+
+    return await service.list_plans(
+        trainer_id=trainer.id,
+    )
 
 
 @router.get(
@@ -169,7 +169,7 @@ async def delete_plan(
         )
 
     return Response(
-        status_code=204
+        status_code=204,
     )
 
 
@@ -185,11 +185,9 @@ async def regenerate_plan(
     service = build_plan_service(session)
 
     try:
-        regenerated = (
-            await service.regenerate_plan(
-                plan_id=plan_id,
-                trainer_id=trainer.id,
-            )
+        regenerated = await service.regenerate_plan(
+            plan_id=plan_id,
+            trainer_id=trainer.id,
         )
 
     except ValueError as error:
@@ -199,6 +197,11 @@ async def regenerate_plan(
         ) from error
 
     except Exception as error:
+        logger.exception(
+            "Plan regeneration failed: %s",
+            error,
+        )
+
         raise HTTPException(
             status_code=500,
             detail="Plan regeneration failed.",
