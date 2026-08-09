@@ -15,15 +15,15 @@ class SemanticSearchRequest(BaseModel):
 
 
 class RetrievedChunkResponse(BaseModel):
-    chunk_id: int
-    document_id: int
+    chunk_id: str
+    document_id: str
     chunk_index: int
     content: str
     similarity_score: float
 
 
 class SemanticSearchResponse(BaseModel):
-    query: int
-    document_id: int
+    query: str
+    document_id: str
     total_results: int
     results: list[RetrievedChunkResponse]

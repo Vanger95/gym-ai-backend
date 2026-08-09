@@ -60,7 +60,7 @@ class DocumentRepository:
         return chunks
     
 
-    async def get_embedded_chunks(self, document_id: int) -> list[DocumentChunk]:
+    async def get_embedded_chunks(self, document_id: str) -> list[DocumentChunk]:
        statement = (
             select(DocumentChunk)
             .where(DocumentChunk.document_id == document_id)
@@ -73,7 +73,7 @@ class DocumentRepository:
        return list(result.scalars().all())
     
 
-    async def get_by_id(self, chunk_id: int) -> DocumentChunk | None:
+    async def get_chunk_by_id(self, chunk_id: str) -> DocumentChunk | None:
         statement = select(DocumentChunk).where(
             DocumentChunk.id == chunk_id
         )

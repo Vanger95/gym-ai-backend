@@ -71,10 +71,10 @@ class DocumentService:
         stored_filename = f"{uuid4()}{extension}"
         stored_path = UPLOAD_DIRECTORY / stored_filename
 
+        created_document = None
+
         try:
             stored_path.write_bytes(file_contents)
-            # created_document = await self.repository.create(document)
-
             document = Document(
                  trainer_id=trainer_id,
                  filename=original_filename,
@@ -84,11 +84,6 @@ class DocumentService:
                  status="uploaded",
             )
             created_document = await self.repository.create(document)
-
-            created_document = await self.repository.update_status(
-                 created_document,
-                "processed",
-            )
 
             if extension == ".pdf":
                 extracted_text = PDFParser().extract_text(str(stored_path))
@@ -128,15 +123,6 @@ class DocumentService:
                  [chunk.content for chunk in document_chunks]
             )
 
-           
-
-            await self.repository.create_chunks(document_chunks)
-
-            # embedding_service = EmbeddingService(
-            #     api_key=settings.openai_api_key,
-            #     model=settings.openai_embedding_model,
-            # )
-
             await self.repository.update_chunk_embeddings(
                 document_chunks,
                 embedding_json_values,
@@ -148,16 +134,14 @@ class DocumentService:
             
 
         except Exception:
-            if "created_document" is not None():
+            if created_document is not None:
                 try:
                     created_document = await self.repository.update_status(
-                    created_document,
-                    "failed",
+                        created_document,
+                        "failed",
                     )
                 except Exception:
-                    await self.repository.sesson.rollback()
-                
-            
+                    await self.repository.session.rollback()
             raise
 
         finally:
