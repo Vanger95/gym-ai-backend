@@ -21,3 +21,7 @@ class GeneratedPlan(BaseModel):
 class SavedPlanResponse(GeneratedPlan):
     id: str
     created_at: datetime
+
+
+class RegeneratePlanResponse(SavedPlanResponse):
+    regenerated_from_plan_id: str

@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.coordinator import PlanCoordinator
 from app.agents.nutrition_agent import NutritionAgent
 from app.agents.workout_agent import WorkoutAgent
 from app.core.config import get_settings
@@ -11,6 +10,7 @@ from app.repositories.document_repository import DocumentRepository
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.plan import (
     GeneratePlanRequest,
+    RegeneratePlanResponse,
     SavedPlanResponse,
 )
 from app.services.embedding_service import EmbeddingService
@@ -24,32 +24,22 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/generate",
-    response_model=SavedPlanResponse,
-)
-async def generate_plan(
-    request: GeneratePlanRequest,
-    session: AsyncSession = Depends(get_db_session),
-) -> SavedPlanResponse:
+def build_plan_service(
+    session: AsyncSession,
+) -> PlanService:
     settings = get_settings()
 
-    # Temporary until authentication is implemented.
-    trainer_id = "demo-trainer"
-
-    client_repository = ClientRepository(session)
-
-    client = await client_repository.get_by_id(
-        request.client_id
+    client_repository = ClientRepository(
+        session
     )
 
-    if client is None or client.trainer_id != trainer_id:
-        raise HTTPException(
-            status_code=404,
-            detail="Client not found.",
-        )
+    document_repository = DocumentRepository(
+        session
+    )
 
-    document_repository = DocumentRepository(session)
+    plan_repository = PlanRepository(
+        session
+    )
 
     embedding_service = EmbeddingService(
         api_key=settings.openai_api_key,
@@ -61,39 +51,6 @@ async def generate_plan(
         embedding_service=embedding_service,
     )
 
-    workout_knowledge = await knowledge_service.search(
-        query=(
-            f"Workout programming for {client.goal}, "
-            f"{client.experience_level}, "
-            f"{client.training_days_per_week} days per week"
-        ),
-        trainer_id=trainer_id,
-        top_k=5,
-        category="workout",
-    )
-
-    nutrition_knowledge = await knowledge_service.search(
-        query=(
-            f"Nutrition guidance for {client.goal}, "
-            f"adult client weighing {client.weight_kg} kg"
-        ),
-        trainer_id=trainer_id,
-        top_k=5,
-        category="nutrition",
-    )
-
-    if not workout_knowledge:
-        raise HTTPException(
-            status_code=400,
-            detail="No workout knowledge is available.",
-        )
-
-    if not nutrition_knowledge:
-        raise HTTPException(
-            status_code=400,
-            detail="No nutrition knowledge is available.",
-        )
-
     workout_agent = WorkoutAgent(
         api_key=settings.openai_api_key,
         model=settings.openai_chat_model,
@@ -104,27 +61,42 @@ async def generate_plan(
         model=settings.openai_chat_model,
     )
 
-    coordinator = PlanCoordinator(
+    return PlanService(
+        plan_repository=plan_repository,
+        client_repository=client_repository,
+        knowledge_service=knowledge_service,
         workout_agent=workout_agent,
         nutrition_agent=nutrition_agent,
     )
 
+
+@router.post(
+    "/generate",
+    response_model=SavedPlanResponse,
+)
+async def generate_plan(
+    request: GeneratePlanRequest,
+    session: AsyncSession = Depends(
+        get_db_session
+    ),
+) -> SavedPlanResponse:
+    trainer_id = "demo-trainer"
+
+    service = build_plan_service(
+        session
+    )
+
     try:
-        generated_plan = await coordinator.generate(
-            client=client,
-            workout_knowledge=workout_knowledge,
-            nutrition_knowledge=nutrition_knowledge,
-        )
-
-        plan_repository = PlanRepository(session)
-        plan_service = PlanService(plan_repository)
-
-        saved_plan = await plan_service.save_generated_plan(
-            generated_plan=generated_plan,
+        return await service.generate_and_save(
+            client_id=request.client_id,
             trainer_id=trainer_id,
         )
 
-        return saved_plan
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
 
     except Exception as error:
         raise HTTPException(
@@ -138,12 +110,15 @@ async def generate_plan(
     response_model=list[SavedPlanResponse],
 )
 async def list_plans(
-    session: AsyncSession = Depends(get_db_session),
+    session: AsyncSession = Depends(
+        get_db_session
+    ),
 ) -> list[SavedPlanResponse]:
     trainer_id = "demo-trainer"
 
-    repository = PlanRepository(session)
-    service = PlanService(repository)
+    service = build_plan_service(
+        session
+    )
 
     return await service.list_plans(
         trainer_id=trainer_id,
@@ -156,12 +131,15 @@ async def list_plans(
 )
 async def get_plan(
     plan_id: str,
-    session: AsyncSession = Depends(get_db_session),
+    session: AsyncSession = Depends(
+        get_db_session
+    ),
 ) -> SavedPlanResponse:
     trainer_id = "demo-trainer"
 
-    repository = PlanRepository(session)
-    service = PlanService(repository)
+    service = build_plan_service(
+        session
+    )
 
     plan = await service.get_plan(
         plan_id=plan_id,
@@ -175,3 +153,80 @@ async def get_plan(
         )
 
     return plan
+
+
+@router.delete(
+    "/{plan_id}",
+    status_code=204,
+)
+async def delete_plan(
+    plan_id: str,
+    session: AsyncSession = Depends(
+        get_db_session
+    ),
+) -> Response:
+    trainer_id = "demo-trainer"
+
+    service = build_plan_service(
+        session
+    )
+
+    deleted = await service.delete_plan(
+        plan_id=plan_id,
+        trainer_id=trainer_id,
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Plan not found.",
+        )
+
+    return Response(
+        status_code=204
+    )
+
+
+@router.post(
+    "/{plan_id}/regenerate",
+    response_model=RegeneratePlanResponse,
+)
+async def regenerate_plan(
+    plan_id: str,
+    session: AsyncSession = Depends(
+        get_db_session
+    ),
+) -> RegeneratePlanResponse:
+    trainer_id = "demo-trainer"
+
+    service = build_plan_service(
+        session
+    )
+
+    try:
+        regenerated = (
+            await service.regenerate_plan(
+                plan_id=plan_id,
+                trainer_id=trainer_id,
+            )
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="Plan regeneration failed.",
+        ) from error
+
+    if regenerated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Plan not found.",
+        )
+
+    return regenerated
