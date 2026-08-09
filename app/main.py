@@ -11,6 +11,8 @@ from app.api.retrieval import router as retrieval_router
 from app.api.qa import router as qa_router
 from app.api.knowledge import router as knowledge_router
 from app.api.workouts import router as workouts_router
+from app.api.nutrition import router as nutrition_router
+from app.api.plans import router as plans_router
 
 
 
@@ -28,6 +30,8 @@ app.include_router(retrieval_router)
 app.include_router(qa_router)
 app.include_router(knowledge_router)
 app.include_router(workouts_router)
+app.include_router(nutrition_router)
+app.include_router(plans_router)
 
 
 @app.get("/health")
